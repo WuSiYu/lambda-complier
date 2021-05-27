@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# python module cache
+__pycache__/
+
+# ply.yacc's cache file
+/parser.out
+/parsetab.py
