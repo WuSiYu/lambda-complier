@@ -5,6 +5,16 @@ import ply.yacc as yacc
 from scanner import tokens
 from syntax import CONDITION, FACTOR, PROGRAM, LINE, SENTENCE, EXPRESSION, TERM
 
+def dump_ast(lambda_node, depth=0):
+    if isinstance(lambda_node, partial):
+        func = lambda_node.args[0]
+        args = lambda_node.args[1:]
+        print('    '*depth, "+", func.__module__.split('.')[1] + ' <- ' + func.__name__ + '()')
+        for arg in args:
+            dump_ast(arg, depth+1)
+    else:
+        print('    '*depth, "-", repr(lambda_node))
+
 def get_parser():
     def F(func, *args):
         def wrapper(func, *args, env):
@@ -29,7 +39,7 @@ def get_parser():
         p[0] = F(LINE.sentence, p[1])
 
     def p_SENTENCE_assign(p):
-        'S : IDN EQUAL E'
+        'S : IDN ASSIGN E'
         p[0] = F(SENTENCE.assign, p[1], p[3])
 
     def p_SENTENCE_if_then(p):
@@ -94,12 +104,16 @@ def get_parser():
             | INT16'''
         p[0] = F(FACTOR.integer, p[1])
 
+    def p_FACTOR_expression(p):
+        'F : LPAREN E RPAREN'
+        p[0] = F(FACTOR.expression, p[2])
 
     def p_error(p):
-        print("ERROR: syntax error at token: %s" % p)
-        parser.errok()
-        # raise ValueError("ERROR: syntax error at token: %s" % p)
+        if p:
+            print("ERROR: syntax error at token: %s" % p)
+            parser.errok()
+        else:
+            raise ValueError("ERROR: unexcepted EOF")
 
     parser = yacc.yacc(debug=1)
-
     return parser

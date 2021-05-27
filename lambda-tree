@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+
+from syntax import TERM
+from sys import stdin
+from scanner import get_scanner
+from parser import get_parser
+from ast_execute import TestEnv
+
+scanner = get_scanner()
+parser = get_parser()
+
+AST = parser.parse(stdin.read())
+
+env = TestEnv()
+result = AST(env=env)
+print(*(x if ':' in x else '\t'+x for x in result.code.split('\n')), sep='\n')

@@ -1,14 +1,16 @@
 from sys import stdin
 import ply.lex as lex
 
+reserved = {
+    'if': 'IF',
+    'then': 'THEN',
+    'else': 'ELSE',
+    'while': 'WHILE',
+    'do': 'DO'
+}
+
 tokens = (
-    'IDN',
-    'FLOAT8',
-    'FLOAT10',
-    'FLOAT16',
-    'INT8',
-    'INT16',
-    'INT10',
+    'ASSIGN',
     'PLUS',
     'MINUS',
     'MULTIPLY',
@@ -21,15 +23,17 @@ tokens = (
     'LBLOCK',
     'RBLOCK',
     'ENDLINE',
-    'IF',
-    'THEN',
-    'ELSE',
-    'WHILE',
-    'DO'
-)
+    'IDN',
+    'FLOAT8',
+    'FLOAT10',
+    'FLOAT16',
+    'INT8',
+    'INT16',
+    'INT10'
+) + tuple(reserved.values())
 
 def get_scanner():
-    t_IDN       = r'[a-zA-Z][0-9a-zA-Z]*(?:(?:_|\.)[0-9a-zA-Z]+)?'
+    t_ASSIGN    = r':='
     t_PLUS      = r'\+'
     t_MINUS     = r'-'
     t_MULTIPLY  = r'\*'
@@ -42,20 +46,24 @@ def get_scanner():
     t_LBLOCK    = r'\{'
     t_RBLOCK    = r'\}'
     t_ENDLINE   = r';'
-    t_IF        = r'if'
-    t_THEN      = r'then'
-    t_ELSE      = r'else'
-    t_WHILE     = r'while'
-    t_DO        = r'do'
+
+    def _str_to_real(s, base):
+        parts = s.split('.')
+        num = int(parts[0], base)
+        factor = 1
+        for n in parts[1]:
+            factor /= base
+            num += int(n, base) * factor
+        return num
+    
+    def t_IDN(t):
+        r'[a-zA-Z][0-9a-zA-Z]*(?:(?:_|\.)[0-9a-zA-Z]+)?'
+        t.type = reserved.get(t.value,'IDN')
+        return t
 
     def t_FLOAT8(t):
         r'0[0-7]+\.[0-7]+'
-        parts = t.value.split('.')
-        t.value = int(parts[0], 8)
-        factor = 1
-        for n in parts[1]:
-            factor /= 8
-            t.value += int(n, 8) * factor
+        t.value = _str_to_real(t.value, 8)
         return t
 
     def t_FLOAT10(t):
@@ -65,12 +73,7 @@ def get_scanner():
 
     def t_FLOAT16(t):
         r'0[xX][0-9a-fA-F]+\.[0-9a-fA-F]+'
-        parts = t.value.split('.')
-        t.value = int(parts[0], 16)
-        factor = 1
-        for n in parts[1]:
-            factor /= 16
-            t.value += int(n, 16) * factor
+        t.value = _str_to_real(t.value, 16)
         return t
 
     def t_INT8(t):
@@ -92,7 +95,7 @@ def get_scanner():
         r'\n+'
         t.lexer.lineno += len(t.value)
 
-    t_ignore = ' \t'
+    t_ignore = ' \t\n'
 
     def t_error(t):
         print("Illegal character '%s'" % t.value[0])
@@ -101,6 +104,6 @@ def get_scanner():
     return lex.lex()
 
 if __name__ == '__main__':
-    lexer = get_lexer()
+    lexer = get_scanner()
     lexer.input(stdin.read())
     print(*lexer, sep='\n')

@@ -5,27 +5,36 @@ def assign(s, idn, e, env):
     s.code = e.code + env.gen_assign(id.place, e.place)
 
 def if_then(s, c, s1, env):
-    c.true = env.newlabel()
-    c.false = s.next
-    s1.next = s.next
-    s.code = c.code + env.gen_label(c.true) + s1.code
+    # c.true = env.newlabel()
+    # c.false = s.next
+    # s1.next = s.next
+    # s.code = c.code + env.gen_label(c.true) + s1.code
+    s.code = c.code + env.gen_label(c.true) + s1.code + env.gen_label(c.false)
 
 def if_then_else(s, c, s1, s2, env):
-    c.true = env.newlabel()
-    c.false = env.newlabel()
-    s1.next = s.next
-    s2.next = s.next
+    # c.true = env.newlabel()
+    # c.false = env.newlabel()
+    # s1.next = s.next
+    # s2.next = s.next
+    # s.code = c.code \
+    #     + env.gen_label(c.true)+ s1.code + env.gen_goto(s.next) \
+    #     + env.gen_label(c.false) + s2.code
+    s.next = env.newlabel()
     s.code = c.code \
         + env.gen_label(c.true)+ s1.code + env.gen_goto(s.next) \
-        + env.gen_label(c.false) + s2.code
+        + env.gen_label(c.false) + s2.code + env.gen_label(s.next)
 
 def while_do(s, c, s1, env):
+    # s.begin = env.newlabel()
+    # c.true = env.newlabel()
+    # c.false = s.next
+    # s1.next = s.begin
+    # s.code = env.gen_label(s.begin) + c.code \
+    #     + env.gen_label(c.true) + s1.code + env.gen_goto(s.begin)
     s.begin = env.newlabel()
-    c.true = env.newlabel()
-    c.false = s.next
-    s1.next = s.begin
     s.code = env.gen_label(s.begin) + c.code \
-        + env.gen_label(c.true) + s1.code + env.gen_goto(s.begin)
+        + env.gen_label(c.true) + s1.code + env.gen_goto(s.begin) \
+        + env.gen_label(c.false)
 
 def codeblock(s, p):
     s.code = p.code
