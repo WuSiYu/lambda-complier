@@ -1,13 +1,12 @@
-def plus(e, e1, t, env):
-    e.place = env.newtemp()
-    e.code = e1.code + t.code \
-        + env.gen_plus(e.place, e1.place, t.place)
+from . import _binops
 
-def minus(e, e1, t, env):
-    e.place = env.newtemp()
-    e.code = e1.code + t.code \
-        + env.gen_minus(e.place, e1.place, t.place)
+def plus(d, s1, s2, env):
+    _binops(d, s1, s2, env, 'gen_plus', 'gen_fplus')
+
+def minus(d, s1, s2, env):
+    _binops(d, s1, s2, env, 'gen_minus', 'gen_fminus')
 
 def term(e, t, env):
     e.place = t.place
+    e.type = t.type
     e.code = t.code

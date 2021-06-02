@@ -19,9 +19,6 @@ def get_parser():
     def F(func, *args):
         def wrapper(func, *args, env):
             node = env.newnode()
-            # alist = list(x(env=env) if callable(x) else x for x in args)
-            # func(node, *alist, env)
-            # print(func.__name__, '(%s)' % (', '.join(map(str, alist))), '->', node)
             func(node, *(x(env=env) if callable(x) else x for x in args), env)
             return node
         return partial(wrapper, func, *args)

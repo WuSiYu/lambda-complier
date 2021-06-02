@@ -1,0 +1,8 @@
+iter = 100;
+e = 1.0; n = 1.0; i = 1;
+while i < iter
+    do {
+        e = e + 1/n;
+        i = i + 1;
+        n = i * n;
+    };

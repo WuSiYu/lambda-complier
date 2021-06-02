@@ -4,10 +4,10 @@ import sys
 
 from scanner import get_scanner
 from parser import get_parser
-from ast_execute import ThreeAddressCodeEnv
+from ast_execute import InterpreterEnv
 
-if len(sys.argv) != 3:
-    print("Usage:", sys.argv[0], "<input_file> <output_file>")
+if len(sys.argv) != 2:
+    print("Usage:", sys.argv[0], "<input_file>")
     sys.exit(1)
 
 scanner = get_scanner()
@@ -30,24 +30,14 @@ except Exception as e:
 
 
 # the env object is a method set and environment for intermediate-code generation
-env = ThreeAddressCodeEnv()
+env = InterpreterEnv()
 
 # call AST with env
 try:
-    result = AST(env=env)
+    env.receive(AST(env=env))
 except Exception as e:
-    print("ERROR: three address code generate failed:", e.__class__.__name__, e)
+    print("ERROR: runable function list gererate failed:", e.__class__.__name__, e)
     sys.exit(1)
 
-# get the intermediate-code
-asm_like_code = result.code
-
-try:
-    with open(sys.argv[2], 'w') as f:
-        for line in asm_like_code.split('\n'):
-            if ':' not in line:
-                f.write('\t')
-            f.write(line + '\n')
-except Exception as e:
-    print("ERROR: write to output_file failed:", e.__class__.__name__, e)
-    sys.exit(1)
+# run in env(VM)
+env.exec()

@@ -2,7 +2,7 @@ import parser
 from scanner import get_scanner
 from parser import get_parser, dump_ast
 
-class TestEnv:
+class ThreeAddressCodeEnv:
     def __init__(self):
         self._last_mem = -1
         self._last_flag = -1
@@ -24,14 +24,15 @@ class TestEnv:
         self._last_flag += 1
         return 'label%d' % self._last_flag
 
-    def newtemp(self):
+    def newtemp(self, type):
         self._last_mem += 1
-        return '#%d' % self._last_mem
+        return '#%s%d' % (type, self._last_mem)
 
-    def newvar(self, idn):
+    def newvar(self, idn, type):
         var = self.newnode()
         self._last_mem += 1
-        var.place = '#%d' % self._last_mem
+        var.type = type
+        var.place = '#%s%d_%s' % (type, self._last_mem, idn)
         self._vars[idn] = var
         return var
 
@@ -44,17 +45,32 @@ class TestEnv:
     def gen_assign(self, n1, n2):
         return '%s <- %s\n' % (n1, n2)
 
+    def gen_conv(self, n1, n2, n3):
+        return '%s <- conv_to_%s(%s)\n' % (n1, n2, n3)
+
     def gen_plus(self, n1, n2, n3):
         return '%s <- %s + %s\n' % (n1, n2, n3)
+
+    def gen_fplus(self, n1, n2, n3):
+        return '%s <- %s + %s _F\n' % (n1, n2, n3)
 
     def gen_minus(self, n1, n2, n3):
         return '%s <- %s - %s\n' % (n1, n2, n3)
 
+    def gen_fminus(self, n1, n2, n3):
+        return '%s <- %s - %s _F\n' % (n1, n2, n3)
+
     def gen_multiply(self, n1, n2, n3):
         return '%s <- %s * %s\n' % (n1, n2, n3)
 
+    def gen_fmultiply(self, n1, n2, n3):
+        return '%s <- %s * %s _F\n' % (n1, n2, n3)
+
     def gen_divide(self, n1, n2, n3):
         return '%s <- %s / %s\n' % (n1, n2, n3)
+
+    def gen_fdivide(self, n1, n2, n3):
+        return '%s <- %s / %s _F\n' % (n1, n2, n3)
 
     def gen_if(self, n1, n2, n3, n4):
         return 'if %s %s %s, jump to %s\n' % (n1, n2, n3, n4)
@@ -64,6 +80,7 @@ class TestEnv:
 
     def gen_label(self, n1):
         return n1 + ':\n'
+
 
 class InterpreterEnv:
     def __init__(self):
@@ -90,10 +107,11 @@ class InterpreterEnv:
         self._labels[l] = None
         return l
 
-    def newtemp(self):
+    def newtemp(self, type):
         class Var():
             def __init__(self):
                 self.val = None
+                self.type = type
                 self.place = self
 
             def __repr__(self):
@@ -102,8 +120,8 @@ class InterpreterEnv:
         self._mem.append(var)
         return var
 
-    def newvar(self, idn):
-        var = self.newtemp()
+    def newvar(self, idn, type):
+        var = self.newtemp(type)
         self._vars[idn] = var
         return var
 
@@ -124,22 +142,41 @@ class InterpreterEnv:
             n1.val = self._get(n2)
         return (f, )
 
+    def gen_conv(self, n1, n2, n3):
+        def f():
+            if n2 == 'float':
+                n1.val = float(self._get(n3))
+            else:
+                raise NotImplementedError("gen_conv(): int to float only")
+        return (f, )
+
     def gen_plus(self, n1, n2, n3):
         def f():
             n1.val = self._get(n2) + self._get(n3)
         return (f, )
+
+    gen_fplus = gen_plus
 
     def gen_minus(self, n1, n2, n3):
         def f():
             n1.val = self._get(n2) - self._get(n3)
         return (f, )
 
+    gen_fminus = gen_minus
+
     def gen_multiply(self, n1, n2, n3):
         def f():
             n1.val = self._get(n2) * self._get(n3)
         return (f, )
 
+    gen_fmultiply = gen_multiply
+
     def gen_divide(self, n1, n2, n3):
+        def f():
+            n1.val = self._get(n2) // self._get(n3)
+        return (f, )
+
+    def gen_fdivide(self, n1, n2, n3):
         def f():
             n1.val = self._get(n2) / self._get(n3)
         return (f, )
@@ -167,7 +204,7 @@ class InterpreterEnv:
         return (n1, )
     
     def receive(self, ast_result):
-        for x in ast_result:
+        for x in ast_result.code:
             if callable(x):
                 self._exec.append(x)
             else:
@@ -176,12 +213,20 @@ class InterpreterEnv:
     def exec(self):
         print('running...')
         cycle = 0
-        while self._pc < len(self._exec):
-            cycle += 1
-            self._exec[self._pc]()
-            self._pc += 1
+        try:
+            while self._pc < len(self._exec):
+                cycle += 1
+                self._exec[self._pc]()
+                self._pc += 1
+        except (Exception, KeyboardInterrupt) as e:
+            print("ERROR: exec() error:", e.__class__.__name__, e)
+            print("cycle:", cycle, "pc:", self._pc)
+            print(self._vars)
+            return
+
         print('done, cycle:', cycle)
         print(self._vars)
+
 
 if __name__ == '__main__':
 
@@ -197,23 +242,16 @@ if __name__ == '__main__':
         scanner = get_scanner()
         parser = get_parser()
 
-        # scanner.input(s)
-        # print(*scanner, sep='\n')
-
         ast = parser.parse(s)
 
         print("\n=== AST:")
-        print("# print(ast):")
-        print(ast)
-        print("\n# dump_ast(ast):")
         dump_ast(ast)
 
         print("\n=== AST on TestEnv:")
         try:
-            env = TestEnv()
+            env = ThreeAddressCodeEnv()
             result = ast(env=env)
             print("env:", env._vars)
-            print("result:", result)
             print("\n[CODE]")
             for line in result.code.split('\n'):
                 if ':' in line:
@@ -221,8 +259,8 @@ if __name__ == '__main__':
                 else:
                     print('\t' + line)
         except Exception as e:
-            print("TestEnv failed, code may incomplete:", e)
+            print("ThreeAddressCodeEnv failed, code may incomplete:", e.__class__.__name__, e)
 
         print("\n=== AST on InterpreterEnv:")
-        interpreter.receive(ast(env=interpreter).code)
+        interpreter.receive(ast(env=interpreter))
         interpreter.exec()

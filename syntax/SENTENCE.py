@@ -1,7 +1,7 @@
 def assign(s, idn, e, env):
     id = env.lookup(idn)
     if not id:
-        id = env.newvar(idn)
+        id = env.newvar(idn, e.type)
     s.code = e.code + env.gen_assign(id.place, e.place)
 
 def if_then(s, c, s1, env):
