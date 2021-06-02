@@ -10,7 +10,6 @@ reserved = {
 }
 
 tokens = (
-    'ASSIGN',
     'PLUS',
     'MINUS',
     'MULTIPLY',
@@ -33,7 +32,6 @@ tokens = (
 ) + tuple(reserved.values())
 
 def get_scanner():
-    t_ASSIGN    = r':='
     t_PLUS      = r'\+'
     t_MINUS     = r'-'
     t_MULTIPLY  = r'\*'
@@ -58,7 +56,7 @@ def get_scanner():
     
     def t_IDN(t):
         r'[a-zA-Z][0-9a-zA-Z]*(?:(?:_|\.)[0-9a-zA-Z]+)?'
-        t.type = reserved.get(t.value,'IDN')
+        t.type = reserved.get(t.value, 'IDN')
         return t
 
     def t_FLOAT8(t):

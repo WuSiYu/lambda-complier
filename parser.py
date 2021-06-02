@@ -39,7 +39,7 @@ def get_parser():
         p[0] = F(LINE.sentence, p[1])
 
     def p_SENTENCE_assign(p):
-        'S : IDN ASSIGN E'
+        'S : IDN EQUAL E'
         p[0] = F(SENTENCE.assign, p[1], p[3])
 
     def p_SENTENCE_if_then(p):
@@ -103,6 +103,12 @@ def get_parser():
             | INT10
             | INT16'''
         p[0] = F(FACTOR.integer, p[1])
+
+    def p_FACTOR_float(p):
+        '''F : FLOAT8
+            | FLOAT10
+            | FLOAT16'''
+        p[0] = F(FACTOR.float, p[1])
 
     def p_FACTOR_expression(p):
         'F : LPAREN E RPAREN'

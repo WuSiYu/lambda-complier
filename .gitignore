@@ -3,6 +3,7 @@
 
 # python module cache
 __pycache__/
+*.pyc
 
 # ply.yacc's cache file
 /parser.out

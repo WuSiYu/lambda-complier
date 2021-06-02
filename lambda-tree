@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from syntax import TERM
 from sys import stdin
 from scanner import get_scanner
 from parser import get_parser
@@ -9,8 +8,16 @@ from ast_execute import TestEnv
 scanner = get_scanner()
 parser = get_parser()
 
+# AST is a function contains a "function object tree", which bind with the input
 AST = parser.parse(stdin.read())
 
+# the env object is a method set and environment for intermediate-code generation
 env = TestEnv()
+
+# call AST with env
 result = AST(env=env)
-print(*(x if ':' in x else '\t'+x for x in result.code.split('\n')), sep='\n')
+
+# get the intermediate-code
+asm_like_code = result.code
+
+print(*(x if ':' in x else '\t'+x for x in asm_like_code.split('\n')), sep='\n')
