@@ -185,6 +185,8 @@ class InterpreterEnv:
 
 if __name__ == '__main__':
 
+    interpreter = InterpreterEnv()
+
     while True:
         try:
             s = input('parse > ')
@@ -207,18 +209,20 @@ if __name__ == '__main__':
         dump_ast(ast)
 
         print("\n=== AST on TestEnv:")
-        env = TestEnv()
-        result = ast(env=env)
-        print("env:", env._vars)
-        print("result:", result)
-        print("\n[CODE]")
-        for line in result.code.split('\n'):
-            if ':' in line:
-                print(line)
-            else:
-                print('\t' + line)
+        try:
+            env = TestEnv()
+            result = ast(env=env)
+            print("env:", env._vars)
+            print("result:", result)
+            print("\n[CODE]")
+            for line in result.code.split('\n'):
+                if ':' in line:
+                    print(line)
+                else:
+                    print('\t' + line)
+        except Exception as e:
+            print("TestEnv failed, code may incomplete:", e)
 
         print("\n=== AST on InterpreterEnv:")
-        env = InterpreterEnv()
-        env.receive(ast(env=env).code)
-        env.exec()
+        interpreter.receive(ast(env=interpreter).code)
+        interpreter.exec()
