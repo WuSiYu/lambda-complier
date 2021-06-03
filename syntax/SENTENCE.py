@@ -1,7 +1,11 @@
+from . import _conv
+
 def assign(s, idn, e, env):
     id = env.lookup(idn)
     if not id:
         id = env.newvar(idn, e.type)
+    if id.type != e.type:
+        e = _conv(id.type, e, env)
     s.code = e.code + env.gen_assign(id.place, e.place)
 
 def if_then(s, c, s1, env):

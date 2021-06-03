@@ -5,7 +5,7 @@ def _conv(new_type, src, env):
     dst = env.newnode()
     dst.type = new_type
     dst.place = env.newtemp(new_type)
-    dst.code = src.code + env.gen_conv(dst.place, new_type, src.place)
+    dst.code = src.code + env.gen_conv(dst.place, new_type, src.place, src.type)
     return dst
 
 # General binary operations

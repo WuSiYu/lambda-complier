@@ -45,35 +45,38 @@ class ThreeAddressCodeEnv:
     def gen_assign(self, n1, n2):
         return '%s <- %s\n' % (n1, n2)
 
-    def gen_conv(self, n1, n2, n3):
-        return '%s <- conv_to_%s(%s)\n' % (n1, n2, n3)
+    def gen_conv(self, n1, n2, n3, n4):
+        return '%s <- conv_%s_to_%s(%s)\n' % (n1, n4, n2, n3)
 
     def gen_plus(self, n1, n2, n3):
         return '%s <- %s + %s\n' % (n1, n2, n3)
 
     def gen_fplus(self, n1, n2, n3):
-        return '%s <- %s + %s _F\n' % (n1, n2, n3)
+        return '%s <- %s +. %s\n' % (n1, n2, n3)
 
     def gen_minus(self, n1, n2, n3):
         return '%s <- %s - %s\n' % (n1, n2, n3)
 
     def gen_fminus(self, n1, n2, n3):
-        return '%s <- %s - %s _F\n' % (n1, n2, n3)
+        return '%s <- %s -. %s\n' % (n1, n2, n3)
 
     def gen_multiply(self, n1, n2, n3):
         return '%s <- %s * %s\n' % (n1, n2, n3)
 
     def gen_fmultiply(self, n1, n2, n3):
-        return '%s <- %s * %s _F\n' % (n1, n2, n3)
+        return '%s <- %s *. %s\n' % (n1, n2, n3)
 
     def gen_divide(self, n1, n2, n3):
         return '%s <- %s / %s\n' % (n1, n2, n3)
 
     def gen_fdivide(self, n1, n2, n3):
-        return '%s <- %s / %s _F\n' % (n1, n2, n3)
+        return '%s <- %s /. %s\n' % (n1, n2, n3)
 
     def gen_if(self, n1, n2, n3, n4):
         return 'if %s %s %s, jump to %s\n' % (n1, n2, n3, n4)
+
+    def gen_fif(self, n1, n2, n3, n4):  # float cmp if
+        return 'if %s %s. %s, jump to %s\n' % (n1, n2, n3, n4)
 
     def gen_goto(self, n1):
         return 'jump to %s\n' % n1
@@ -142,12 +145,14 @@ class InterpreterEnv:
             n1.val = self._get(n2)
         return (f, )
 
-    def gen_conv(self, n1, n2, n3):
+    def gen_conv(self, n1, n2, n3, n4):
         def f():
+            if n2 == 'int':
+                n1.val = int(self._get(n3))
             if n2 == 'float':
                 n1.val = float(self._get(n3))
             else:
-                raise NotImplementedError("gen_conv(): int to float only")
+                raise NotImplementedError("gen_conv(): int <-> float only, not %s -> %s" % (n4, n2))
         return (f, )
 
     def gen_plus(self, n1, n2, n3):
@@ -194,6 +199,7 @@ class InterpreterEnv:
             if self._cmp(n1, n2, n3):
                 self._pc = self._labels[n4] - 1
         return (f, )
+    gen_fif = gen_if
 
     def gen_goto(self, n1):
         def f():
