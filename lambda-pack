@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+
+import sys, pickle
+
+from scanner import get_scanner
+from parser import get_parser, parse, dump_ast
+from ast_execute import InterpreterEnv
+
+if len(sys.argv) != 3:
+    print("Usage:", sys.argv[0], "<input_file> <output_file>")
+    sys.exit(1)
+
+scanner_tuple = get_scanner()
+parser_tuple = get_parser()
+
+source_code = ""
+try:
+    with open(sys.argv[1], 'r') as f:
+        source_code = f.read()
+except Exception as e:
+    print("ERROR: read from input_file failed:", e.__class__.__name__, e)
+    sys.exit(1)
+
+
+# AST is a function contains a "function object tree", which bind with the input
+AST = parse(scanner_tuple, parser_tuple, source_code)
+if not AST:
+    print("ERROR: parse failed, abort")
+    sys.exit(1)
+
+
+# the env object is a method set and environment for intermediate-code generation
+env = InterpreterEnv()
+
+# call AST with env
+try:
+    env.receive(AST(env=env))
+except Exception as e:
+    print("ERROR: runable function list gererate failed:", e.__class__.__name__, e)
+    sys.exit(1)
+
+
+# save loader and env object to a file
+LOADER = """
+#!/bin/sh
+/usr/bin/python3 -c "
+class InterpreterEnv_Var():
+    def __init__(self):
+        self.val = None
+        self.type = type
+        self.place = self
+
+    def __repr__(self):
+        return repr(self.val)
+
+class InterpreterEnv_Obj():
+    def __getattr__(self, name):
+        return self.__dict__[name]
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+    def __repr__(self):
+        return self.__dict__.__repr__()
+
+class InterpreterEnv:
+    def __init__(self):
+        self._exec = []
+        self._mem = []
+        self._vars = {}
+        self._labels = {}
+        self._pc = 0
+
+    def newnode(self):
+        return InterpreterEnv_Obj()
+
+    def newlabel(self):
+        l = object()
+        self._labels[l] = None
+        return l
+
+    def newtemp(self, type):
+        var = InterpreterEnv_Var()
+        self._mem.append(var)
+        return var
+
+    def newvar(self, idn, type):
+        var = self.newtemp(type)
+        self._vars[idn] = var
+        return var
+
+    def lookup(self, idn):
+        return self._vars.get(idn)
+
+    def _get(self, v):
+        if hasattr(v, 'val'):
+            return v.val
+        else :
+            return v
+
+    def gen_nothing(self):
+        return tuple()
+
+    def _assign(self, n1, n2):
+        n1.val = self._get(n2)
+    def gen_assign(self, *args):
+        return (partial(self._assign, *args), )
+
+    def _conv(self, n1, n2, n3, n4):
+        if n2 == 'int':
+            n1.val = int(self._get(n3))
+        if n2 == 'float':
+            n1.val = float(self._get(n3))
+        else:
+            raise NotImplementedError('gen_conv(): int <-> float only, not %s -> %s' % (n4, n2))
+    def gen_conv(self, *args):
+        return (partial(self._conv, *args), )
+
+    def _plus(self, n1, n2, n3):
+        n1.val = self._get(n2) + self._get(n3)
+    def gen_plus(self, *args):
+        return (partial(self._plus, *args), )
+
+    gen_fplus = gen_plus
+
+    def _minus(self, n1, n2, n3):
+        n1.val = self._get(n2) - self._get(n3)
+    def gen_minus(self, *args):
+        return (partial(self._minus, *args), )
+
+    gen_fminus = gen_minus
+
+    def _multiply(self, n1, n2, n3):
+        n1.val = self._get(n2) * self._get(n3)
+    def gen_multiply(self, *args):
+        return (partial(self._multiply, *args), )
+
+    gen_fmultiply = gen_multiply
+
+    def _divide(self, n1, n2, n3):
+        n1.val = self._get(n2) // self._get(n3)
+    def gen_divide(self, *args):
+        return (partial(self._divide, *args), )
+
+    def _fdivide(self, n1, n2, n3):
+        n1.val = self._get(n2) / self._get(n3)
+    def gen_fdivide(self, *args):
+        return (partial(self._fdivide, *args), )
+
+    def _cmp(self, n1, n2, n3):
+        if n2 == '>':
+            return self._get(n1) > self._get(n3)
+        if n2 == '=':
+            return self._get(n1) == self._get(n3)
+        if n2 == '<':
+            return self._get(n1) < self._get(n3)
+
+    def _if(self, n1, n2, n3, n4):
+        if self._cmp(n1, n2, n3):
+            self._pc = self._labels[n4] - 1
+    def gen_if(self, *args):
+        return (partial(self._if, *args), )
+
+    gen_fif = gen_if
+
+    def _goto(self, n1):
+        self._pc = self._labels[n1] - 1
+    def gen_goto(self, *args):
+        return (partial(self._goto, *args), )
+
+    def gen_label(self, n1):
+        return (n1, )
+    
+    def receive(self, ast_result):
+        for x in ast_result.code:
+            if callable(x):
+                self._exec.append(x)
+            else:
+                self._labels[x] = len(self._exec)
+
+    def exec(self):
+        print('running...')
+        cycle = 0
+        try:
+            while self._pc < len(self._exec):
+                cycle += 1
+                self._exec[self._pc]()
+                self._pc += 1
+        except (Exception, KeyboardInterrupt) as e:
+            print('ERROR: exec() stoped:', e.__class__.__name__, e)
+            print('cycle:', cycle, 'pc:', self._pc)
+            print(self._vars)
+            return
+
+        print('done, cycle:', cycle)
+        print(self._vars)
+
+import pickle, sys; sys.modules['ast_execute'] = sys.modules['__main__']; f = open('$0', 'rb'); f.seek(________); env = pickle.load(f); f.close(); env.exec(); sys.exit(0)
+"
+exit 0
+######
+"""
+LOADER = LOADER.replace('________', '%8d' % len(LOADER))
+
+try:
+    with open(sys.argv[2], 'wb') as f:
+        f.write(LOADER.encode())
+        pickle.dump(env, f, pickle.HIGHEST_PROTOCOL)
+except Exception as e:
+    print("ERROR: write to output_file failed:", e.__class__.__name__, e)
+    sys.exit(1)
+
