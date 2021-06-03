@@ -94,7 +94,7 @@ def get_scanner() -> Tuple[lex.Lexer, list]:
         r'\n+'
         t.lexer.lineno += len(t.value)
 
-    t_ignore = ' \t\n'
+    t_ignore = ' \t'
 
     def t_error(t):
         error_list.append((t.lineno, t.value[0]))
