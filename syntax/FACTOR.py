@@ -1,7 +1,7 @@
 def idn(f, idn, env):
-    id = env.lookup(idn)
+    id = env.lookup(idn[0])
     if not id:
-        raise NameError('IDN "%s" used before assign' % idn)
+        raise NameError('line %d: IDN "%s" used before assign' % (idn[1], idn[0]))
     f.place = id.place
     f.type = id.type
     f.code = env.gen_nothing()

@@ -1,5 +1,6 @@
 from functools import partial
-from ply.lex import Lexer
+from os import error
+from typing import Tuple
 import ply.yacc as yacc
 
 from scanner import tokens
@@ -15,7 +16,29 @@ def dump_ast(lambda_node, depth=0):
     else:
         print('    '*depth, "-", repr(lambda_node))
 
-def get_parser():
+def parse(scanner_tuple, parser_tuple, input):
+    scanner, scanner_err = scanner_tuple
+    parser, parser_err = parser_tuple
+    parser_exception = None
+    try:
+        result = parser.parse(input, lexer=scanner)
+    except Exception as e:
+        parser_exception = e
+
+    if scanner_err:
+        print(*('ERROR: line %d: Illegal character \'%s\'' % x for x in scanner_err), sep='\n')
+        return None
+
+    if parser_err or parser_exception:
+        if parser_err:
+            print(*('ERROR: line %d: Syntax error at \"%s\"' % x for x in parser_err), sep='\n')
+        if parser_exception:
+            print('ERROR: Syntax error:', parser_exception)
+        return None
+
+    return result
+
+def get_parser() -> Tuple[yacc.LRParser, list]:
     def F(func, *args):
         def wrapper(func, *args, env):
             node = env.newnode()
@@ -32,7 +55,7 @@ def get_parser():
         p[0] = F(PROGRAM.line_program, p[1], p[2])
 
     def p_LINE_sentence(p):
-        'L : S ENDLINE'
+        'L : S SEMICOLON'
         p[0] = F(LINE.sentence, p[1])
 
     def p_SENTENCE_assign(p):
@@ -93,7 +116,7 @@ def get_parser():
 
     def p_FACTOR_idn(p):
         'F : IDN'
-        p[0] = F(FACTOR.idn, p[1])
+        p[0] = F(FACTOR.idn, (p[1], p.lineno(1)))
 
     def p_FACTOR_int(p):
         '''F : INT8
@@ -112,11 +135,16 @@ def get_parser():
         p[0] = F(FACTOR.expression, p[2])
 
     def p_error(p):
-        if p:
-            print("ERROR: syntax error at token: %s" % p)
-            parser.errok()
-        else:
-            raise ValueError("ERROR: unexcepted EOF")
+        if not p:
+            raise ValueError("unexcepted End Of File")
 
-    parser = yacc.yacc(debug=1)
-    return parser
+        error_list.append((p.lineno, p.value))
+        while True:
+            tok = parser.token()
+            if not tok or tok.type == 'SEMICOLON':
+                break
+        parser.restart()
+
+    error_list = []
+    parser = yacc.yacc(method="LALR")
+    return parser, error_list

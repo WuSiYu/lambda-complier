@@ -3,15 +3,15 @@
 import sys
 
 from scanner import get_scanner
-from parser import get_parser
+from parser import get_parser, parse, dump_ast
 from ast_execute import InterpreterEnv
 
 if len(sys.argv) != 2:
     print("Usage:", sys.argv[0], "<input_file>")
     sys.exit(1)
 
-scanner = get_scanner()
-parser = get_parser()
+scanner_tuple = get_scanner()
+parser_tuple = get_parser()
 
 source_code = ""
 try:
@@ -21,11 +21,11 @@ except Exception as e:
     print("ERROR: read from input_file failed:", e.__class__.__name__, e)
     sys.exit(1)
 
+
 # AST is a function contains a "function object tree", which bind with the input
-try:
-    AST = parser.parse(source_code)
-except Exception as e:
-    print("ERROR: parse failed, syntax error:", e.__class__.__name__, e)
+AST = parse(scanner_tuple, parser_tuple, source_code)
+if not AST:
+    print("ERROR: parse failed, abort")
     sys.exit(1)
 
 

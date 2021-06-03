@@ -3,15 +3,20 @@
 import sys
 
 from scanner import get_scanner
-from parser import get_parser
+from parser import get_parser, parse, dump_ast
 from ast_execute import ThreeAddressCodeEnv
 
-if len(sys.argv) != 3:
-    print("Usage:", sys.argv[0], "<input_file> <output_file>")
+if not (len(sys.argv) == 3 or (len(sys.argv) == 4 and sys.argv[1] == '--dump-ast')):
+    print("Usage:", sys.argv[0], "[--dump-ast] <input_file> <output_file>")
     sys.exit(1)
 
-scanner = get_scanner()
-parser = get_parser()
+need_dump_ast = False
+if len(sys.argv) == 4:
+    del sys.argv[1]
+    need_dump_ast = True
+
+scanner_tuple = get_scanner()
+parser_tuple = get_parser()
 
 source_code = ""
 try:
@@ -21,13 +26,17 @@ except Exception as e:
     print("ERROR: read from input_file failed:", e.__class__.__name__, e)
     sys.exit(1)
 
+
 # AST is a function contains a "function object tree", which bind with the input
-try:
-    AST = parser.parse(source_code)
-except Exception as e:
-    print("ERROR: parse failed, syntax error:", e.__class__.__name__, e)
+AST = parse(scanner_tuple, parser_tuple, source_code)
+if not AST:
+    print("ERROR: parse failed, abort")
     sys.exit(1)
 
+if need_dump_ast:
+    print("\n=== AST Start ===")
+    dump_ast(AST)
+    print("=== AST End ===\n")
 
 # the env object is a method set and environment for intermediate-code generation
 env = ThreeAddressCodeEnv()

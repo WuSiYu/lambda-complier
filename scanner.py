@@ -1,4 +1,5 @@
 from sys import stdin
+from typing import Tuple
 import ply.lex as lex
 
 reserved = {
@@ -21,7 +22,7 @@ tokens = (
     'RPAREN',
     'LBLOCK',
     'RBLOCK',
-    'ENDLINE',
+    'SEMICOLON',
     'IDN',
     'FLOAT8',
     'FLOAT10',
@@ -31,7 +32,7 @@ tokens = (
     'INT10'
 ) + tuple(reserved.values())
 
-def get_scanner():
+def get_scanner() -> Tuple[lex.Lexer, list]:
     t_PLUS      = r'\+'
     t_MINUS     = r'-'
     t_MULTIPLY  = r'\*'
@@ -43,7 +44,7 @@ def get_scanner():
     t_RPAREN    = r'\)'
     t_LBLOCK    = r'\{'
     t_RBLOCK    = r'\}'
-    t_ENDLINE   = r';'
+    t_SEMICOLON = r';'
 
     def _str_to_real(s, base):
         parts = s.split('.')
@@ -96,12 +97,17 @@ def get_scanner():
     t_ignore = ' \t\n'
 
     def t_error(t):
-        print("Illegal character '%s'" % t.value[0])
+        error_list.append((t.lineno, t.value[0]))
         t.lexer.skip(1)
 
-    return lex.lex()
+    error_list = []
+    return lex.lex(), error_list
 
 if __name__ == '__main__':
-    lexer = get_scanner()
+    lexer, error_list = get_scanner()
     lexer.input(stdin.read())
-    print(*lexer, sep='\n')
+    
+    outputs = ["%s %s\t (line=%d, offset=%d)" % (x.type.ljust(10), x.value, x.lineno, x.lexpos) for x in lexer]
+    if error_list:
+        print(*('ERROR: line %d: Illegal character \'%s\'' % x for x in error_list), sep='\n')
+    print(*outputs, sep='\n')

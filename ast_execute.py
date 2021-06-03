@@ -1,6 +1,6 @@
 import parser
 from scanner import get_scanner
-from parser import get_parser, dump_ast
+from parser import get_parser, parse, dump_ast
 
 class ThreeAddressCodeEnv:
     def __init__(self):
@@ -219,7 +219,7 @@ class InterpreterEnv:
                 self._exec[self._pc]()
                 self._pc += 1
         except (Exception, KeyboardInterrupt) as e:
-            print("ERROR: exec() error:", e.__class__.__name__, e)
+            print("ERROR: exec() stoped:", e.__class__.__name__, e)
             print("cycle:", cycle, "pc:", self._pc)
             print(self._vars)
             return
@@ -242,7 +242,10 @@ if __name__ == '__main__':
         scanner = get_scanner()
         parser = get_parser()
 
-        ast = parser.parse(s)
+        ast = parse(scanner, parser, s)
+        if not ast:
+            print("error or empty ast, abort")
+            continue
 
         print("\n=== AST:")
         dump_ast(ast)
@@ -259,8 +262,13 @@ if __name__ == '__main__':
                 else:
                     print('\t' + line)
         except Exception as e:
-            print("ThreeAddressCodeEnv failed, code may incomplete:", e.__class__.__name__, e)
+            print("ThreeAddressCodeEnv failed, code may incomplete:")
+            print("ERROR:", e)
 
         print("\n=== AST on InterpreterEnv:")
-        interpreter.receive(ast(env=interpreter))
-        interpreter.exec()
+        try:
+            interpreter.receive(ast(env=interpreter))
+            interpreter.exec()
+        except Exception as e:
+            print("InterpreterEnv failed:")
+            print("ERROR:", e)
