@@ -151,7 +151,7 @@ class InterpreterEnv:
     def _conv(self, n1, n2, n3, n4):
         if n2 == 'int':
             n1.val = int(self._get(n3))
-        if n2 == 'float':
+        elif n2 == 'float':
             n1.val = float(self._get(n3))
         else:
             raise NotImplementedError("gen_conv(): int <-> float only, not %s -> %s" % (n4, n2))
